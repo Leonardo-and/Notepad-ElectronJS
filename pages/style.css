@@ -1,0 +1,50 @@
+* {
+  padding: 0px;
+  margin: 0px;
+  box-sizing: border-box;
+}
+
+body,
+html {
+  width: 100vw;
+  height: 100vh;
+  overflow-x: hidden;
+  background-color: #3e3e3e;
+}
+
+textarea {
+  width: 100vw;
+  height: auto;
+  min-height: 100vh;
+  outline: none;
+  border: none;
+  background-color: #3e3e3e;
+  color: white;
+  font-size: 16px;
+  padding: 5px 20px;
+  resize: none;
+}
+
+.editor {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: row;
+}
+
+.lines-counter {
+  background-color: #3e3e3e;
+  width: 40px;
+  height: 100vh;
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+  text-align: end;
+  scroll-behavior: smooth;
+  overflow-y: hidden;
+}
+
+.line {
+  padding: 0px 5px;
+  color: whitesmoke;
+}
