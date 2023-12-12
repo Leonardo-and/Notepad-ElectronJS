@@ -39,21 +39,20 @@ class Application {
         nodeIntegration: true,
         contextIsolation: false,
       },
-      icon: path.join(__dirname, "..", "assets", "icons", "/main-icon.png"),
+      icon: path.join(__dirname, "..", "assets", "icons", "main-icon.png"),
     };
     this.win = new BrowserWindow(windowConfig);
     await this.win.loadURL(
-      path.join("file://", __dirname, "..", "pages", "/index.html")
+      path.join("file://", __dirname, "..", "pages", "index.html")
     );
 
     this.createNewFile();
   }
 
-  start() {
-    app.whenReady().then(() => {
-      this.createWindow();
-      this.listenEvents();
-    });
+  async start() {
+    await app.whenReady();
+    this.createWindow();
+    this.listenEvents();
     this.setMenus();
   }
 
@@ -68,7 +67,7 @@ class Application {
       }
     });
 
-    ipcMain.on("update-content", (e, data: string) => {
+    ipcMain.on("update-content", (event, data) => {
       this.file.content = data;
     });
   }
@@ -84,28 +83,35 @@ class Application {
   }
 
   async saveFileAs() {
-    let dialogFile = await dialog.showSaveDialog({
-      defaultPath: this.file.path,
-    });
+    try {
+      const dialogFile = await dialog.showSaveDialog({
+        defaultPath: this.file.path,
+      });
 
-    if (dialogFile.canceled) return;
-
-    if (dialogFile.filePath) this.writeFile(dialogFile.filePath);
+      if (!dialogFile.canceled && dialogFile.filePath)
+        await this.writeFile(dialogFile.filePath);
+    } catch (error) {
+      console.log(error);
+      return;
+    }
   }
 
   async saveFile() {
-    if (this.file.saved) {
-      this.writeFile(this.file.path);
+    const { saved, path } = this.file;
+    if (saved) {
+      await this.writeFile(path);
     } else {
-      this.saveFileAs();
+      await this.saveFileAs();
     }
   }
 
   async writeFile(filePath: string) {
     try {
       fs.writeFile(filePath, this.file.content, (err) => {
-        if (err) throw new Error("Unable to save the file");
-
+        if (err) {
+          console.log(err);
+          return;
+        }
         this.file.path = filePath;
         this.file.saved = true;
         this.file.name = path.basename(filePath);
@@ -117,17 +123,17 @@ class Application {
     }
   }
 
-  readFile(filePath: string) {
+  readFile(path: string) {
     try {
-      return fs.readFileSync(filePath, { encoding: "utf-8" });
+      return fs.readFileSync(path, { encoding: "utf-8" });
     } catch (error) {
       console.log(error);
-      return "";
+      throw error;
     }
   }
 
   async openFile() {
-    let dialogFile = await dialog.showOpenDialog({
+    const dialogOptions = {
       defaultPath: this.file.path,
       filters: [
         {
@@ -135,15 +141,17 @@ class Application {
           extensions: ["txt", "html", "js", "css", "xml", "json"],
         },
       ],
-    });
+    };
+    const dialogFile = await dialog.showOpenDialog(dialogOptions);
 
     if (dialogFile.canceled) return;
+    const filePath = dialogFile.filePaths[0];
 
     this.file = {
-      name: path.basename(dialogFile.filePaths[0]),
-      content: this.readFile(dialogFile.filePaths[0]),
+      name: path.basename(filePath),
+      content: this.readFile(filePath),
       saved: true,
-      path: dialogFile.filePaths[0],
+      path: filePath,
     };
     this.win?.webContents.send("set-file", this.file);
   }
@@ -195,24 +203,12 @@ class Application {
       {
         label: "Edit",
         submenu: [
-          {
-            role: "undo",
-          },
-          {
-            role: "redo",
-          },
-          {
-            type: "separator",
-          },
-          {
-            role: "copy",
-          },
-          {
-            role: "cut",
-          },
-          {
-            role: "paste",
-          },
+          { role: "undo" },
+          { role: "redo" },
+          { type: "separator" },
+          { role: "copy" },
+          { role: "cut" },
+          { role: "paste" },
         ],
       },
       {

@@ -24,17 +24,16 @@ class Application {
                 nodeIntegration: true,
                 contextIsolation: false,
             },
-            icon: path_1.default.join(__dirname, "..", "assets", "icons", "/main-icon.png"),
+            icon: path_1.default.join(__dirname, "..", "assets", "icons", "main-icon.png"),
         };
         this.win = new electron_1.BrowserWindow(windowConfig);
-        await this.win.loadURL(path_1.default.join("file://", __dirname, "..", "pages", "/index.html"));
+        await this.win.loadURL(path_1.default.join("file://", __dirname, "..", "pages", "index.html"));
         this.createNewFile();
     }
-    start() {
-        electron_1.app.whenReady().then(() => {
-            this.createWindow();
-            this.listenEvents();
-        });
+    async start() {
+        await electron_1.app.whenReady();
+        this.createWindow();
+        this.listenEvents();
         this.setMenus();
     }
     listenEvents() {
@@ -47,7 +46,7 @@ class Application {
                 electron_1.app.quit();
             }
         });
-        electron_1.ipcMain.on("update-content", (e, data) => {
+        electron_1.ipcMain.on("update-content", (event, data) => {
             this.file.content = data;
         });
     }
@@ -62,28 +61,35 @@ class Application {
         (_a = this.win) === null || _a === void 0 ? void 0 : _a.webContents.send("set-file", this.file);
     }
     async saveFileAs() {
-        let dialogFile = await electron_1.dialog.showSaveDialog({
-            defaultPath: this.file.path,
-        });
-        if (dialogFile.canceled)
+        try {
+            const dialogFile = await electron_1.dialog.showSaveDialog({
+                defaultPath: this.file.path,
+            });
+            if (!dialogFile.canceled && dialogFile.filePath)
+                await this.writeFile(dialogFile.filePath);
+        }
+        catch (error) {
+            console.log(error);
             return;
-        if (dialogFile.filePath)
-            this.writeFile(dialogFile.filePath);
+        }
     }
     async saveFile() {
-        if (this.file.saved) {
-            this.writeFile(this.file.path);
+        const { saved, path } = this.file;
+        if (saved) {
+            await this.writeFile(path);
         }
         else {
-            this.saveFileAs();
+            await this.saveFileAs();
         }
     }
     async writeFile(filePath) {
         try {
             fs_1.default.writeFile(filePath, this.file.content, (err) => {
                 var _a;
-                if (err)
-                    throw new Error("Unable to save the file");
+                if (err) {
+                    console.log(err);
+                    return;
+                }
                 this.file.path = filePath;
                 this.file.saved = true;
                 this.file.name = path_1.default.basename(filePath);
@@ -95,18 +101,18 @@ class Application {
             return;
         }
     }
-    readFile(filePath) {
+    readFile(path) {
         try {
-            return fs_1.default.readFileSync(filePath, { encoding: "utf-8" });
+            return fs_1.default.readFileSync(path, { encoding: "utf-8" });
         }
         catch (error) {
             console.log(error);
-            return "";
+            throw error;
         }
     }
     async openFile() {
         var _a;
-        let dialogFile = await electron_1.dialog.showOpenDialog({
+        const dialogOptions = {
             defaultPath: this.file.path,
             filters: [
                 {
@@ -114,14 +120,16 @@ class Application {
                     extensions: ["txt", "html", "js", "css", "xml", "json"],
                 },
             ],
-        });
+        };
+        const dialogFile = await electron_1.dialog.showOpenDialog(dialogOptions);
         if (dialogFile.canceled)
             return;
+        const filePath = dialogFile.filePaths[0];
         this.file = {
-            name: path_1.default.basename(dialogFile.filePaths[0]),
-            content: this.readFile(dialogFile.filePaths[0]),
+            name: path_1.default.basename(filePath),
+            content: this.readFile(filePath),
             saved: true,
-            path: dialogFile.filePaths[0],
+            path: filePath,
         };
         (_a = this.win) === null || _a === void 0 ? void 0 : _a.webContents.send("set-file", this.file);
     }
@@ -171,24 +179,12 @@ class Application {
             {
                 label: "Edit",
                 submenu: [
-                    {
-                        role: "undo",
-                    },
-                    {
-                        role: "redo",
-                    },
-                    {
-                        type: "separator",
-                    },
-                    {
-                        role: "copy",
-                    },
-                    {
-                        role: "cut",
-                    },
-                    {
-                        role: "paste",
-                    },
+                    { role: "undo" },
+                    { role: "redo" },
+                    { type: "separator" },
+                    { role: "copy" },
+                    { role: "cut" },
+                    { role: "paste" },
                 ],
             },
             {

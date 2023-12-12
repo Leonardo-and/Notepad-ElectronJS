@@ -34,13 +34,13 @@ function countLines() {
   const linesCount = textarea.value.split("\n");
   lines.innerHTML = "";
 
-  for (let i = 0; i < linesCount.length; i++) {
+  linesCount.forEach((line, i) => {
     const lineNumber = i + 1;
     const lineDiv = document.createElement("div");
     lineDiv.textContent = `${lineNumber}`;
     lineDiv.classList.add("line");
     lines.appendChild(lineDiv);
-  }
+  });
 
   lines.style.height = textarea.scrollHeight + "px";
 }
